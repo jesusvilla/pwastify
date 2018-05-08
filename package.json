@@ -1,0 +1,33 @@
+{
+  "name": "pwastify",
+  "version": "1.0.0",
+  "description": "Starter project for Quasar APP and ES6 RESTful Fastify API",
+  "main": "server/server.js",
+  "scripts": {
+    "dev": "nodemon ./server/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jesusvilla/pwastify.git"
+  },
+  "keywords": [
+    "Quasar",
+    "Fastify",
+    "PWA"
+  ],
+  "author": "Jesús Villanueva Ramos",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/jesusvilla/pwastify/issues"
+  },
+  "homepage": "https://github.com/jesusvilla/pwastify#readme",
+  "dependencies": {
+    "fastify": "^1.4.0",
+    "jsonwebtoken": "^8.2.1",
+    "mongodb": "^3.0.7",
+    "pino-multi-stream": "^3.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^1.17.4"
+  }
+}

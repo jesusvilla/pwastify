@@ -11,10 +11,15 @@ class Login {
         const {request, response} = this.http
         const login = this.models.login
         login.generarToken({user, password}).then(function(token){
+            // const fs = require('fs')
+            // const stream = fs.createReadStream('some-file', 'utf8')
+            // response.send(stream) // Sólo con custom error
             response.send({
                 colcod: info.colcod,
                 token
             })
+        }).catch(function (e) {
+            response.error(e, 'Hubo un error')
         })
     }
 }

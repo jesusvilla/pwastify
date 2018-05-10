@@ -5,17 +5,16 @@ const isProduction = process.env.NODE_ENV !== 'development'
 const estado = isProduction?'producción':'desarrollo'
 const archivoLog = `logs/node`
 
-//MultiStream
-const multistream = require('pino-multi-stream').multistream
-const configStream = {'flags': 'a'}
-const streams = [
-  //{stream: fs.createWriteStream('info.server.out')},
-  {stream: fs.createWriteStream(`${archivoLog}.log`, configStream)},
-  {level: 'fatal', stream: fs.createWriteStream(`${archivoLog}.fatal`, configStream)}
-]
-
 let log = null
 if (isProduction) {
+  //MultiStream
+  const multistream = require('pino-multi-stream').multistream
+  const configStream = {'flags': 'a'}
+  const streams = [
+    //{stream: fs.createWriteStream('info.server.out')},
+    {stream: fs.createWriteStream(`${archivoLog}.log`, configStream)},
+    {level: 'fatal', stream: fs.createWriteStream(`${archivoLog}.fatal`, configStream)}
+  ]
   log = require('pino')(config.log, multistream(streams))
 } else {
   log = require('pino')(config.log)

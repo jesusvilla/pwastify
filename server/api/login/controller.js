@@ -1,19 +1,22 @@
 class Login {
-    constructor ({all, params, http, models}) {
-        this.all = all
+    constructor ({token, knex, info, request, response, params, models}) {
+        this.token = token
+        this.knex = knex
+        this.info = info
+        this.request = request
+        this.response = response
         this.params = params
-        this.http = http
         this.models = models
     }
-    ingresar () {
-        const {token, knex, info} = this.all
+    Ingresar () {
+        const {token, knex, info, request, response} = this
         const {user, password} = this.params
-        const {request, response} = this.http
         const login = this.models.login
         login.generarToken({user, password}).then(function(token){
             // const fs = require('fs')
             // const stream = fs.createReadStream('some-file', 'utf8')
             // response.send(stream) // Sólo con custom error
+            // response.sendFile('some-file')
             response.send({
                 colcod: info.colcod,
                 token

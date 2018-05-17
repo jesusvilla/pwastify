@@ -1,13 +1,4 @@
-class Login {
-    constructor ({token, knex, info, request, response, params, models}) {
-        this.token = token
-        this.knex = knex
-        this.info = info
-        this.request = request
-        this.response = response
-        this.params = params
-        this.models = models
-    }
+module.exports = class Login {
     Ingresar () {
         const {token, knex, info, request, response} = this
         const {user, password} = this.params
@@ -26,4 +17,3 @@ class Login {
         })
     }
 }
-module.exports = Login

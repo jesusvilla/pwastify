@@ -55,7 +55,10 @@ const classAll = {
 const getApiComponents = (type, obj) => {
   const components = {}
   forEach(classAll[type], (ComponentClass, component) => {
-    components[component] = new ComponentClass(obj)
+    components[component] = new ComponentClass()
+    forEach(obj, (val, prop) => {
+      components[component][prop] = val
+    })
     components[component][type] = components
   })
   return components
@@ -131,9 +134,7 @@ forEach(fs.readdirSync(rootApi), api => {
         controllers[nameController][nameMethod]()
       }
     }
-    console.log(nameController, nameMethod)
     fastify.route(definitionRouter)
-    console.log(definitionRouter)
   })
 })
 

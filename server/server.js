@@ -21,6 +21,11 @@ if (isProduction) {
 }
 console.log('estado', estado)
 const fastify = require('fastify')({logger: false})
+const helmet = require('fastify-helmet')
+fastify.register(helmet, {
+  hidePoweredBy: { setTo: 'PHP 3.2.0'},
+  xssFilter: { setOnOldIE: true }
+})
 
 // Ruta inicial
 const rutaBase = '/:ini/api'
@@ -31,19 +36,7 @@ fastify.get(rutaBase + '/*', function (request, reply) {
   log.info('Ya se respondió')
 })
 
-const forEach = (obj, fn) => {
-  if (Array.isArray(obj)) {
-    for (let i = 0; i < obj.length; i++) {
-      fn(obj[i], i, i)
-    }
-  } else if (obj && typeof obj === 'object') {
-    const arrProps = Object.keys(obj)
-    for (let i = 0; i < arrProps.length; i++) {
-      const prop = arrProps[i]
-      fn(obj[prop], prop, i)
-    }
-  }
-}
+const forEach = require('../utils/forEach')
 
 // test: http://localhost:3000/bpastor/api/Hyologin/Ingresar?user=jesus&password=jajaja
 const rootApi = path.resolve(__dirname, './api/')
@@ -69,7 +62,8 @@ const getModels = (obj) => {
    * {
         token: null,
         knex: {},
-        info: {}
+        info: {},
+        ini: 'colegio'
      }
    */
   return getApiComponents('models', obj)
@@ -81,6 +75,7 @@ const getControllers = (obj) => {
       token,
       knex,
       info,
+      ini,
       params: request.query,
       request,
       response,
@@ -92,50 +87,90 @@ const getControllers = (obj) => {
   obj.models = getModels({
     token: obj.token,
     knex: obj.knex,
-    info: obj.info
+    info: obj.info,
+    ini: obj.ini
   })
   return getApiComponents('controllers', obj)
 }
 
-forEach(fs.readdirSync(rootApi), api => {
-  classAll.models[api] = require(path.resolve(rootApi, api, 'model'))
-  classAll.controllers[api] = require(path.resolve(rootApi, api, 'controller'))
+const Pool = require('./Pool')
 
-  const RouterFile = require(path.resolve(rootApi, api, 'router'))
+/**
+ * 
+ * @param {string} api - Nombre de la carpeta de la API
+ * @param {Object} configRouter - Valor de definición del route
+ * @param {string} remoteMethod - Nombre del controlador: [controlador.]Metodo que se va a ejecutar
+ */
+const createRoute = (api, configRouter, remoteMethod) => {
+  const auxMethod = remoteMethod.split('.')
+  let nameController, nameMethod
+  if (auxMethod.length === 1) {
+    nameController = api
+    nameMethod = auxMethod[0]
+  } else {
+    nameController = auxMethod[0]
+    nameMethod = auxMethod[1]
+  }
+  let url = `${rutaBase}/${prefijo}${api}`
+  if (configRouter.url) {
+    url += `/${configRouter.url}`
+  } else {
+    url += `/${nameMethod}`
+  }
 
-  forEach(RouterFile, (configRouter, remoteMethod) => {
-    const auxMethod = remoteMethod.split('.')
-    let nameController, nameMethod
-    if (auxMethod.length === 1) {
-      nameController = api
-      nameMethod = auxMethod[0]
-    } else {
-      nameController = auxMethod[0]
-      nameMethod = auxMethod[1]
+  const definitionRouter = {
+    method: configRouter.method,
+    url,
+    schema: configRouter.schema,
+    handler (request, reply) {
+      const ini = request.params.ini
+      const colegio = Pool.getColegio(ini)
+      const controllers = getControllers({
+        token: null,
+        knex: colegio.getKnex(),
+        info: {},
+        ini,
+        params: Object.assign({}, request.query, request.body, request.params, request.headers),
+        request,
+        response: reply
+      })
+      controllers[nameController][nameMethod]()
     }
-    let url = `${rutaBase}/${prefijo}${api}`
-    if (configRouter.url) {
-      url += `/${configRouter.url}`
-    } else {
-      url += `/${nameMethod}`
+  }
+  // Object que define el route a crear, verlo en https://www.fastify.io/docs/latest/Routes/
+  fastify.route(definitionRouter)
+}
+
+/**
+ * 
+ * @param {string} api - Nombre de la carpeta 
+ */
+const NAME_MODEL = 'model.js'
+const NAME_CONTROLLER = 'controller.js'
+const NAME_ROUTER = 'route.js'
+
+const createApi = (api) => {
+  // Por cada cada carpeta (api) se crea o agrega los controladores, modelos y definiciones de rutas
+  const nameFolder = path.resolve(rootApi, api)
+  forEach(fs.readdirSync(nameFolder), apiFile => {
+    if (apiFile === NAME_MODEL) {
+      return classAll.models[api] = require(path.resolve(nameFolder, NAME_MODEL))
     }
-    const definitionRouter = {
-      method: configRouter.method,
-      url,
-      handler (request, reply) {
-        const controllers = getControllers({
-          token: null,
-          knex: {},
-          info: {},
-          params: request.query,
-          request,
-          response: reply
-        })
-        controllers[nameController][nameMethod]()
-      }
+    if (apiFile === NAME_CONTROLLER) {
+      return classAll.controllers[api] = require(path.resolve(nameFolder, NAME_CONTROLLER))
     }
-    fastify.route(definitionRouter)
+    if (apiFile === NAME_ROUTER) {
+      const RouterFile = require(path.resolve(nameFolder, NAME_ROUTER))
+      forEach(RouterFile, (configRouter, remoteMethod) => {
+        createRoute(api, configRouter, remoteMethod)
+      })
+    }
   })
+}
+
+forEach(fs.readdirSync(rootApi), api => {
+  // Se recorre por todas las carpetas dentro de server/api
+  createApi(api)
 })
 
 // Sólo manejo de errores
@@ -193,7 +228,9 @@ fastify.decorateReply('sendFile', function (pathFile, config) {
     messageError: MESSAGE_ERROR_FILE,
     charset: 'utf8'
   }
+
   Object.assign(newConfig, config)
+
   readFile(pathFile)
   .catch(err => {
     if (newConfig.pathFileError) {

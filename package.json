@@ -22,15 +22,17 @@
   },
   "homepage": "https://github.com/jesusvilla/pwastify#readme",
   "dependencies": {
-    "bluebird": "^3.5.1",
-    "fastify": "^1.4.0",
+    "bluebird": "^3.5.3",
+    "fastify": "^1.13.4",
+    "fastify-cookie": "^2.1.5",
     "fastify-helmet": "^1.0.3",
-    "jsonwebtoken": "^8.2.1",
+    "jsonwebtoken": "^8.4.0",
     "mongodb": "^3.0.7",
     "node-firebird-dev": "^1.2.6",
+    "pino": "^5.10.8",
     "pino-multi-stream": "^3.1.2"
   },
   "devDependencies": {
-    "nodemon": "^1.17.4"
+    "nodemon": "^1.18.9"
   }
 }

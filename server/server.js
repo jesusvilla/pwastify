@@ -2,7 +2,7 @@ const config = require('./server.json')
 const fs = require('fs')
 const path = require('path')
 const isProduction = process.env.NODE_ENV !== 'development'
-const estado = isProduction?'producción':'desarrollo'
+const estado = isProduction ? 'producción': 'desarrollo'
 const archivoLog = `logs/node`
 
 let log = null
@@ -21,10 +21,16 @@ if (isProduction) {
 }
 console.log('estado', estado)
 const fastify = require('fastify')({logger: false})
-const helmet = require('fastify-helmet')
-fastify.register(helmet, {
+
+// Register HELMET
+fastify.register(require('fastify-helmet'), {
   hidePoweredBy: { setTo: 'PHP 3.2.0'},
   xssFilter: { setOnOldIE: true }
+})
+
+// Register Cookie
+fastify.register(require('fastify-cookie'), (err) => {
+  if (err) throw err
 })
 
 // Ruta inicial
@@ -173,96 +179,8 @@ forEach(fs.readdirSync(rootApi), api => {
   createApi(api)
 })
 
-// Sólo manejo de errores
-
-const crearError = function (payload) {
-  if (payload && typeof payload === 'object') {
-    // https://www.fastify.io/docs/latest/Reply/
-    /*{
-      error: String        // the http error message
-      message: String      // the user error message
-      statusCode: Number   // the http status code
-    }*/
-    payload.statusCode = 500
-  }
-  if (typeof payload === 'string') {
-    return new Error(payload)
-  } else {
-    return payload
-  }
-}
-
-fastify.decorateReply('error', function (error, message) {
-  // Uso: response.error(e, 'Hubo un error') ó response.error({error:'Un error'})
-  log.error(error)
-  this.code(500)
-  if (message) {
-    this.send(crearError(message))
-  } else {
-    this.send(crearError(error))
-  }
-})
-
-const readFile = (pathFile) => {
-  return new Promise((resolve, reject) => {
-    fs.access(pathFile, fs.constants.R_OK, err => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve(pathFile)
-      }
-    })
-  })
-}
-
-const MESSAGE_ERROR_FILE = 'No se encuentra el archivo'
-/**
- * reply.sendFile('ruta/archivo.js', {message: 'No hay archivo'})
- * @param {string} pathFile - Ruta del archivo
- * @param {string} [config.messageError]=No se encuentra el archivo - Mensaje de error
- * @param {string} [config.pathFileError] - Ruta de archivo en caso de error
- * @param {string} [config.charset]=utf8 - Juego de caracteres
- */
-fastify.decorateReply('sendFile', function (pathFile, config) {
-  const newConfig = {
-    messageError: MESSAGE_ERROR_FILE,
-    charset: 'utf8'
-  }
-
-  Object.assign(newConfig, config)
-
-  readFile(pathFile)
-  .catch(err => {
-    if (newConfig.pathFileError) {
-      return readFile(newConfig.pathFileError)
-    }
-    return Promise.reject(err)
-  })
-  .then(newPath => {
-    this.send(fs.createReadStream(newPath, newConfig.charset))
-  })
-  .catch(err => {
-    this.error(err, newConfig.messageError)
-  })
-})
-
-// Error personalizado
-fastify.setErrorHandler(function (error, request, reply) {
-  // Sólo cuando se envía una instancia de Error en reply.send(new Error('Hubo un error')) 
-  if (error && error.code === 'ENOENT') {// Necesario cuando se usa reply.send(stream)
-    log.error(error)
-    error.message = MESSAGE_ERROR_FILE
-  }
-  reply.send(error)
-})
-
-/*fastify.addHook('onSend', (request, reply, payload, next) => { // Esto es para enviar log.error automáticamente
-  if (reply.res.statusCode === 500) {
-    console.log()
-    log.error(payload)
-  }
-  next()
-})*/
+const decorate = require('./decorate')
+decorate(fastify, log, {})
 
 // Run the server!
 fastify.listen(config.port)
